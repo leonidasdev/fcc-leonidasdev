@@ -1,8 +1,7 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
 const dns = require('dns');
+const cors = require('cors');
 const app = express();
 
 // Basic Configuration
@@ -10,8 +9,10 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 
-// body parser for POST requests
-app.use(bodyParser.urlencoded({ extended: false }));
+// parse application/x-www-form-urlencoded
+app.use(express.urlencoded({ extended: false }));
+// parse application/json
+app.use(express.json());
 
 app.use('/public', express.static(`${process.cwd()}/public`));
 
@@ -28,41 +29,44 @@ app.get('/api/hello', function(req, res) {
 const urlDatabase = [];
 
 app.post('/api/shorturl', function(req, res) {
-  const original = req.body.url;
+  const original_url = req.body.url;
 
-  // validate protocol and parse
-  let hostname;
+  // Validate URL format and protocol
+  let parsed;
   try {
-    const urlObj = new URL(original);
-    hostname = urlObj.hostname;
+    parsed = new URL(original_url);
   } catch (err) {
     return res.json({ error: 'invalid url' });
   }
 
-  // verify hostname via DNS lookup
-  dns.lookup(hostname, (dnsErr) => {
-    if (dnsErr) return res.json({ error: 'invalid url' });
+  if (!/^https?:$/.test(parsed.protocol)) {
+    return res.json({ error: 'invalid url' });
+  }
 
-    // check if already exists
-    const existingIndex = urlDatabase.findIndex(u => u === original);
-    if (existingIndex !== -1) {
-      return res.json({ original_url: original, short_url: existingIndex + 1 });
+  // Use dns.lookup on the hostname to verify it's valid
+  dns.lookup(parsed.hostname, (err) => {
+    if (err) return res.json({ error: 'invalid url' });
+
+    // Check if URL already stored
+    const found = urlDatabase.find(u => u.original_url === original_url);
+    if (found) {
+      return res.json({ original_url: found.original_url, short_url: found.short_url });
     }
 
-    // store and return id
-    urlDatabase.push(original);
-    const id = urlDatabase.length; // 1-based
-    res.json({ original_url: original, short_url: id });
+    const short_url = urlDatabase.length + 1;
+    urlDatabase.push({ original_url, short_url });
+
+    res.json({ original_url, short_url });
   });
 });
 
-app.get('/api/shorturl/:id', function(req, res) {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id < 1 || id > urlDatabase.length) {
-    return res.json({ error: 'No short URL found for the given input' });
+app.get('/api/shorturl/:short_url', function(req, res) {
+  const short = parseInt(req.params.short_url, 10);
+  const entry = urlDatabase.find(u => u.short_url === short);
+  if (entry) {
+    return res.redirect(entry.original_url);
   }
-  const original = urlDatabase[id - 1];
-  res.redirect(original);
+  res.status(404).json({ error: 'No short URL found for the given input' });
 });
 
 app.listen(port, function() {
