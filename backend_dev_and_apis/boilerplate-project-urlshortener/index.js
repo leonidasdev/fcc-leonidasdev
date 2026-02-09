@@ -64,7 +64,10 @@ app.get('/api/shorturl/:short_url', function(req, res) {
   const short = parseInt(req.params.short_url, 10);
   const entry = urlDatabase.find(u => u.short_url === short);
   if (entry) {
-    return res.redirect(entry.original_url);
+    // Send an explicit 302 with Location header to ensure test harness receives it
+    res.setHeader('Location', entry.original_url);
+    res.statusCode = 302;
+    return res.end();
   }
   res.status(404).json({ error: 'No short URL found for the given input' });
 });
