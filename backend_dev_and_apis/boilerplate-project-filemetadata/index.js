@@ -16,9 +16,12 @@ app.get('/', function (req, res) {
 
 
 const port = process.env.PORT || 3000;
-app.listen(port, function () {
-  console.log('Your app is listening on port ' + port)
-});
+
+if (require.main === module) {
+  app.listen(port, function () {
+    console.log('Your app is listening on port ' + port)
+  });
+}
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -30,3 +33,5 @@ app.post('/api/fileanalyse', upload.single('upfile'), function (req, res) {
     size: req.file.size
   });
 });
+
+module.exports = app;
