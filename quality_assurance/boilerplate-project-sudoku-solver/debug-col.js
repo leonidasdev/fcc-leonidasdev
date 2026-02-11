@@ -1,0 +1,12 @@
+const S = require('./controllers/sudoku-solver.js');
+const s = new S();
+const validPuzzle = '1.5..2.84..63.12.7.2..5.....9..1....8.2.3674.3.7.2..9.47...8..1..16....926914.37.';
+const colIndex = 0;
+const col = [];
+for (let i = 0; i < 9; i++) col.push(validPuzzle[i*9 + colIndex]);
+const present = col.find((ch, idx) => /[1-9]/.test(ch) && idx !== 0);
+console.log('col:', col);
+console.log('present:', present);
+const board = s._stringToBoard(validPuzzle);
+console.log('board row 5 col1:', board[4][0]);
+console.log('checkColPlacement result:', s.checkColPlacement(validPuzzle, 'A', 1, present));
